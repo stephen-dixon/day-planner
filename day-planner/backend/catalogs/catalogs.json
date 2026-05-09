@@ -1,0 +1,12 @@
+{
+  "home": {
+    "db_path": "catalogs/home.db",
+    "password_hash": "b4b0e017ebc110b73841860a78858d896d9308ca1dfa03943be9a0a812cc7d94",
+    "salt": "cab3cb8415f6d61d4ccd161b1f71b36c"
+  },
+  "work": {
+    "db_path": "catalogs/work.db",
+    "password_hash": "f1712daf38354f0f84468ec03daa5e7a5cba07156115714d86af844907695f56",
+    "salt": "7c8e8494967475a369656d546bcc7873"
+  }
+}
