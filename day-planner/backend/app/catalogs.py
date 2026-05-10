@@ -5,6 +5,7 @@ import json
 import re
 import secrets
 from pathlib import Path
+from urllib.parse import unquote
 from typing import Any
 
 from fastapi import HTTPException
@@ -28,8 +29,28 @@ def registry_path() -> Path:
 
 def catalog_db_path(name: str) -> Path:
     if name == DEFAULT_CATALOG:
-        return Path("planner.db")
+        return sqlite_path_from_url(get_settings().database_url)
     return catalog_root() / f"{safe_catalog_name(name)}.db"
+
+
+def catalog_database_url(name: str) -> str:
+    if name == DEFAULT_CATALOG:
+        return get_settings().database_url
+    return f"sqlite:///{catalog_db_path(name)}"
+
+
+def sqlite_path_from_url(database_url: str) -> Path:
+    if database_url == "sqlite:///:memory:":
+        raise RuntimeError("In-memory SQLite is not supported for persistent planner catalogs.")
+    if database_url.startswith("sqlite:////"):
+        raw_path = "/" + database_url.removeprefix("sqlite:////")
+    elif database_url.startswith("sqlite:///"):
+        raw_path = database_url.removeprefix("sqlite:///")
+    else:
+        raise RuntimeError("Only SQLite DATABASE_URL values are supported by this app.")
+    if not raw_path:
+        raise RuntimeError("SQLite DATABASE_URL must include a database path.")
+    return Path(unquote(raw_path))
 
 
 def list_catalogs() -> list[dict[str, Any]]:

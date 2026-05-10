@@ -3,6 +3,8 @@
 </script>
 
 <nav class="top-nav">
+  <a class:active={$page.url.pathname === '/plan'} href="/plan">Plan Day</a>
+  <a class:active={$page.url.pathname === '/support'} href="/support">Support Mode</a>
   <a class:active={$page.url.pathname === '/'} href="/">Planner</a>
   <a class:active={$page.url.pathname === '/tasks'} href="/tasks">Tasks</a>
   <a class:active={$page.url.pathname === '/habits'} href="/habits">Habits</a>

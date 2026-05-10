@@ -11,7 +11,7 @@ source .venv/bin/activate
 uvicorn app.main:app --reload
 ```
 
-The frontend expects the API at `http://127.0.0.1:8000`.
+For local development, copy `.env.example` to `.env` so the frontend calls `http://127.0.0.1:8000`. Production builds default to same-origin `/api` for Caddy reverse proxy deployment.
 
 ## Run the frontend
 
@@ -27,6 +27,8 @@ Open `http://127.0.0.1:5173`.
 Pages:
 
 - `/`: single-day planner with backlog, external busy blocks, and calendar connection controls.
+- `/plan`: simplified planning cockpit day view.
+- `/support`: support mode with deterministic recommendations plus optional AI proposals.
 - `/tasks`: focused task creation, backlog editing, and GitHub milestone issue import.
 - `/habits`: rolling habit adherence view for recurring tasks marked as habits.
 - `/projects`: project view showing complete and outstanding tasks by milestone.
@@ -45,10 +47,10 @@ Tasks can be marked recurring from the planner or focused task page. A recurring
 
 Set the backend `.env` values from `backend/.env.example`, start FastAPI, then use the Calendar integrations panel on `/`.
 
-Connect buttons navigate to:
+Connect buttons navigate through the configured API base:
 
-- `http://127.0.0.1:8000/auth/google/start`
-- `http://127.0.0.1:8000/auth/microsoft/start`
+- `/auth/google/start` in dev via `VITE_API_BASE_URL`
+- `/api/auth/google/start` in production behind Caddy
 
 External events render as grey locked blocks. They are not draggable, resizable, or marked done. You can add a local label, mark one as non-blocking, or hide it from the planner without changing the provider calendar. If a planned task overlaps a blocking busy block, the UI asks whether to schedule anyway.
 
@@ -56,24 +58,10 @@ External events render as grey locked blocks. They are not draggable, resizable,
 
 Set `GITHUB_TOKEN` in the backend `.env`, plus optional `GITHUB_DEFAULT_OWNER` and `GITHUB_DEFAULT_REPO`. On `/tasks`, load milestones, load issues for a milestone, then import selected issues into local tasks. Ignored issues are dimmed locally.
 
+## Static Build
+
+This app uses `@sveltejs/adapter-static`; `npm run build` writes deployable static files to `frontend/build`.
+
 ## CORS
 
-The backend is configured with FastAPI `CORSMiddleware` for:
-
-- `http://localhost:5173`
-- `http://127.0.0.1:5173`
-
-The relevant backend setup is in `backend/app/main.py`:
-
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
+Backend CORS origins are configured with `CORS_ORIGINS` in the backend environment. Same-origin production traffic through Caddy should not need CORS.

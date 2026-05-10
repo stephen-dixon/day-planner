@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import DayBlock, Task
+from app.models import DayBlock, Task, TaskStep
 from app.schemas import DayBlockCreate, DayBlockRead, DayBlockUpdate
 
 router = APIRouter(tags=["day blocks"])
@@ -35,10 +35,14 @@ def create_day_block(
     payload: DayBlockCreate,
     db: Session = Depends(get_db),
 ):
-    """Schedule a task into a block on a date."""
+    """Schedule a task, step, or standalone block on a date."""
 
-    if db.get(Task, payload.task_id) is None:
+    if payload.task_id is not None and db.get(Task, payload.task_id) is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    if payload.task_step_id is not None and db.get(TaskStep, payload.task_step_id) is None:
+        raise HTTPException(status_code=404, detail="Step not found")
+    if payload.block_type in {"task", "step"} and payload.task_id is None and payload.task_step_id is None:
+        raise HTTPException(status_code=422, detail="Task or step blocks need a task_id or task_step_id")
 
     block = DayBlock(date=block_date, **payload.model_dump())
     db.add(block)
@@ -63,6 +67,9 @@ def update_day_block(
     task_id = updates.get("task_id")
     if task_id is not None and db.get(Task, task_id) is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    step_id = updates.get("task_step_id")
+    if step_id is not None and db.get(TaskStep, step_id) is None:
+        raise HTTPException(status_code=404, detail="Step not found")
 
     start_minute = updates.get("start_minute", block.start_minute)
     end_minute = updates.get("end_minute", block.end_minute)

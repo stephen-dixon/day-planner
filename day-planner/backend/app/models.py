@@ -92,10 +92,24 @@ class Task(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    status: Mapped[str] = mapped_column(String(40), default="todo", nullable=False)
-    priority: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
+    status: Mapped[str] = mapped_column(String(40), default="active", nullable=False)
+    priority: Mapped[Optional[int]] = mapped_column(Integer, default=3, nullable=True)
     estimated_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     deadline: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    source_type: Mapped[str] = mapped_column(String(40), default="local", nullable=False)
+    source_id: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    source_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    source_label: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    energy_required: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    activation_cost: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    focus_required: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    interest_level: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    context: Mapped[str] = mapped_column(String(40), default="unknown", nullable=False)
+    task_phase: Mapped[str] = mapped_column(String(40), default="vague", nullable=False)
+    clarity_progress: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    momentum_state: Mapped[str] = mapped_column(String(40), default="unknown", nullable=False)
+    starter_step: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    friction_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     due_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     planned_date: Mapped[Optional[date]] = mapped_column(Date, index=True, nullable=True)
     project_id: Mapped[Optional[int]] = mapped_column(ForeignKey("projects.id"), nullable=True)
@@ -121,8 +135,9 @@ class Task(Base):
 
     blocks: Mapped[list["DayBlock"]] = relationship(
         back_populates="task",
-        cascade="all, delete-orphan",
     )
+    steps: Mapped[list["TaskStep"]] = relationship(back_populates="task", cascade="all, delete-orphan")
+    work_sessions: Mapped[list["WorkSession"]] = relationship(back_populates="task")
     completions: Mapped[list["TaskCompletion"]] = relationship(
         back_populates="task",
         cascade="all, delete-orphan",
@@ -155,11 +170,15 @@ class DayBlock(Base):
     __tablename__ = "day_blocks"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
-    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    task_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    task_step_id: Mapped[Optional[int]] = mapped_column(ForeignKey("task_steps.id"), nullable=True)
     date: Mapped[date] = mapped_column(Date, index=True, nullable=False)
     start_minute: Mapped[int] = mapped_column(Integer, nullable=False)
     end_minute: Mapped[int] = mapped_column(Integer, nullable=False)
+    block_type: Mapped[str] = mapped_column(String(40), default="task", nullable=False)
+    title_override: Mapped[Optional[str]] = mapped_column(String(240), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="planned", nullable=False)
+    commitment_strength: Mapped[str] = mapped_column(String(40), default="soft", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -172,7 +191,73 @@ class DayBlock(Base):
         nullable=False,
     )
 
-    task: Mapped[Task] = relationship(back_populates="blocks")
+    task: Mapped[Optional[Task]] = relationship(back_populates="blocks")
+    task_step: Mapped[Optional["TaskStep"]] = relationship(back_populates="blocks")
+
+
+class TaskStep(Base):
+    """A fine-grained executable step owned locally by the planner."""
+
+    __tablename__ = "task_steps"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(40), default="todo", nullable=False)
+    order_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    estimated_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    activation_cost: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    can_do_low_energy: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    task: Mapped[Task] = relationship(back_populates="steps")
+    blocks: Mapped[list[DayBlock]] = relationship(back_populates="task_step")
+    work_sessions: Mapped[list["WorkSession"]] = relationship(back_populates="task_step")
+
+
+class WorkSession(Base):
+    """A record of what actually happened while trying to work."""
+
+    __tablename__ = "work_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    task_id: Mapped[Optional[int]] = mapped_column(ForeignKey("tasks.id"), nullable=True)
+    task_step_id: Mapped[Optional[int]] = mapped_column(ForeignKey("task_steps.id"), nullable=True)
+    day_block_id: Mapped[Optional[int]] = mapped_column(ForeignKey("day_blocks.id"), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(40), default="unknown", nullable=False)
+    actual_minutes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    energy_at_start: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    focus_at_start: Mapped[str] = mapped_column(String(20), default="unknown", nullable=False)
+    friction_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
+    task: Mapped[Optional[Task]] = relationship(back_populates="work_sessions")
+    task_step: Mapped[Optional[TaskStep]] = relationship(back_populates="work_sessions")
+    day_block: Mapped[Optional[DayBlock]] = relationship()
 
 
 class TaskCompletion(Base):

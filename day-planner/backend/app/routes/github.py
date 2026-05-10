@@ -93,6 +93,10 @@ def import_github_issue(payload: ImportGitHubIssueRequest, db: Session = Depends
         status="active",
         priority=payload.priority or 3,
         estimated_minutes=payload.estimated_minutes,
+        source_type="github",
+        source_id=str(issue["id"]),
+        source_url=issue["html_url"],
+        source_label=f"{payload.owner}/{payload.repo}#{issue['number']}",
     )
     db.add(task)
     db.flush()

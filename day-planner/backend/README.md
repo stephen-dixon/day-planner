@@ -27,11 +27,11 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-The app serves OpenAPI docs at `http://127.0.0.1:8000/docs`.
+The app serves OpenAPI docs at `http://127.0.0.1:8000/docs`. Production traffic should use `/api/*` behind Caddy; root-level routes are kept temporarily for local compatibility.
 
 ## Task Catalogs
 
-SQLite data is persisted to files. The default catalog uses `planner.db` in the backend directory. Additional catalogs are separate SQLite files under `CATALOG_DIR`, which defaults to `catalogs/`.
+SQLite data is persisted to files. The default catalog uses `DATABASE_URL`, which defaults to `sqlite:///./dayplanner-dev.db`. For Raspberry Pi deployment use `sqlite:////var/lib/dayplanner/dayplanner.db`. Additional catalogs are separate SQLite files under `CATALOG_DIR`, which defaults to `catalogs/`.
 
 Use the frontend Catalogs page, or call the API directly:
 
@@ -146,13 +146,13 @@ This is for a private single-user server only. OAuth tokens are stored server-si
 Health check:
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/api/health
 ```
 
 Create a task:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/tasks \
+curl -X POST http://127.0.0.1:8000/api/tasks \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Write weekly plan",
@@ -166,13 +166,13 @@ curl -X POST http://127.0.0.1:8000/tasks \
 List tasks:
 
 ```bash
-curl http://127.0.0.1:8000/tasks
+curl http://127.0.0.1:8000/api/tasks
 ```
 
 Schedule a block for task `1` on May 10, 2026 from 09:00 to 09:45:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/days/2026-05-10/blocks \
+curl -X POST http://127.0.0.1:8000/api/days/2026-05-10/blocks \
   -H "Content-Type: application/json" \
   -d '{
     "task_id": 1,
@@ -184,13 +184,13 @@ curl -X POST http://127.0.0.1:8000/days/2026-05-10/blocks \
 List blocks for a day:
 
 ```bash
-curl http://127.0.0.1:8000/days/2026-05-10/blocks
+curl http://127.0.0.1:8000/api/days/2026-05-10/blocks
 ```
 
 Update a block:
 
 ```bash
-curl -X PATCH http://127.0.0.1:8000/blocks/1 \
+curl -X PATCH http://127.0.0.1:8000/api/blocks/1 \
   -H "Content-Type: application/json" \
   -d '{ "status": "done" }'
 ```
@@ -198,5 +198,5 @@ curl -X PATCH http://127.0.0.1:8000/blocks/1 \
 Delete a block:
 
 ```bash
-curl -X DELETE http://127.0.0.1:8000/blocks/1
+curl -X DELETE http://127.0.0.1:8000/api/blocks/1
 ```

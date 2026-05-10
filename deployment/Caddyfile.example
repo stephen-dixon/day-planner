@@ -1,0 +1,29 @@
+:8080 {
+    root * /opt/dayplanner/frontend/build
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
+
+# Later, with a real domain and Caddy-managed HTTPS:
+#
+# dayplanner.example.com {
+#     root * /opt/dayplanner/frontend/build
+#     encode gzip
+#
+#     handle /api/* {
+#         reverse_proxy 127.0.0.1:8000
+#     }
+#
+#     handle {
+#         try_files {path} /index.html
+#         file_server
+#     }
+# }

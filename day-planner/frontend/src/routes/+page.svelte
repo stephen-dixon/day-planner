@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import {
+    apiUrl,
     createDayBlock,
     createTag,
     createTask,
@@ -342,7 +343,9 @@
     error = '';
     try {
       await updateDayBlock(block.id, { status: 'done' });
-      await completeTask(block.task_id, { completed_on: block.date, source_block_id: block.id });
+      if (block.task_id) {
+        await completeTask(block.task_id, { completed_on: block.date, source_block_id: block.id });
+      }
       await refreshData();
     } catch (err) {
       error = err instanceof Error ? err.message : 'Could not mark block done.';
@@ -604,7 +607,7 @@
                 Disconnect
               </button>
             {:else}
-              <a class="button-link" href={`http://127.0.0.1:8000/auth/${status.provider}/start`}>
+              <a class="button-link" href={apiUrl(`/auth/${status.provider}/start`)}>
                 Connect {providerLabel(status.provider)}
               </a>
             {/if}

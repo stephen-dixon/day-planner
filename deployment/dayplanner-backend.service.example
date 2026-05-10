@@ -1,0 +1,17 @@
+[Unit]
+Description=Day Planner FastAPI backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=dayplanner
+Group=dayplanner
+WorkingDirectory=/opt/dayplanner/backend
+EnvironmentFile=/etc/dayplanner/backend.env
+ExecStart=/opt/dayplanner/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+SyslogIdentifier=dayplanner-backend
+
+[Install]
+WantedBy=multi-user.target

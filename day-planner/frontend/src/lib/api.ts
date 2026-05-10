@@ -2,6 +2,14 @@ import type {
   DayBlock,
   DayBlockCreate,
   DayBlockUpdate,
+  AIStatus,
+  ContextAnalytics,
+  PlannedDayProposal,
+  SessionReflection,
+  SuggestedBlock,
+  TaskAnalytics,
+  TaskBreakdown,
+  TaskEnrichment,
   ExternalCalendarBlock,
   ExternalCalendarStatus,
   GitHubConfig,
@@ -19,10 +27,15 @@ import type {
   TaskCatalog,
   Task,
   TaskCreate,
+  TaskRecommendation,
+  TaskStep,
+  TaskStepCreate,
+  TaskStepUpdate,
+  SupportRecommendRequest,
   TaskUpdate
 } from './types';
 
-const API_BASE = 'http://127.0.0.1:8000';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000' : '/api');
 const CATALOG_TOKEN_KEY = 'day-planner-catalog-token';
 const CATALOG_NAME_KEY = 'day-planner-catalog-name';
 
@@ -48,7 +61,7 @@ function catalogHeaders(): Record<string, string> {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await fetch(apiUrl(path), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -67,6 +80,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+export function apiUrl(path: string): string {
+  return `${API_BASE}${path}`;
 }
 
 export function getCatalogs(): Promise<TaskCatalog[]> {
@@ -91,6 +108,10 @@ export function getTasks(): Promise<Task[]> {
   return request<Task[]>('/tasks');
 }
 
+export function getTask(id: number): Promise<Task> {
+  return request<Task>(`/tasks/${id}`);
+}
+
 export function createTask(payload: TaskCreate): Promise<Task> {
   return request<Task>('/tasks', {
     method: 'POST',
@@ -109,6 +130,78 @@ export function deleteTask(id: number): Promise<void> {
   return request<void>(`/tasks/${id}`, {
     method: 'DELETE'
   });
+}
+
+export function getTaskSteps(taskId: number): Promise<TaskStep[]> {
+  return request<TaskStep[]>(`/tasks/${taskId}/steps`);
+}
+
+export function createTaskStep(taskId: number, payload: TaskStepCreate): Promise<TaskStep> {
+  return request<TaskStep>(`/tasks/${taskId}/steps`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function updateTaskStep(id: number, payload: TaskStepUpdate): Promise<TaskStep> {
+  return request<TaskStep>(`/steps/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function deleteTaskStep(id: number): Promise<void> {
+  return request<void>(`/steps/${id}`, {
+    method: 'DELETE'
+  });
+}
+
+export function recommendTasks(payload: SupportRecommendRequest): Promise<TaskRecommendation[]> {
+  return request<TaskRecommendation[]>('/support/recommend-tasks', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getAIStatus(): Promise<AIStatus> {
+  return request<AIStatus>('/ai/status');
+}
+
+export function aiEnrichTask(taskId: number): Promise<TaskEnrichment> {
+  return request<TaskEnrichment>(`/ai/enrich-task/${taskId}`, { method: 'POST' });
+}
+
+export function aiBreakDownTask(taskId: number): Promise<TaskBreakdown> {
+  return request<TaskBreakdown>(`/ai/break-down-task/${taskId}`, { method: 'POST' });
+}
+
+export function aiReflectSession(payload: { task_id: number; session_note: string; outcome?: string | null }): Promise<SessionReflection> {
+  return request<SessionReflection>('/ai/reflect-session', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function aiPlanDay(payload: {
+  date: string;
+  energy: string;
+  focus: string;
+  available_minutes?: number | null;
+  free_text?: string | null;
+  preferred_context?: string | null;
+}): Promise<PlannedDayProposal> {
+  return request<PlannedDayProposal>('/ai/plan-day', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getTaskAnalytics(taskId: number): Promise<TaskAnalytics> {
+  return request<TaskAnalytics>(`/analytics/task/${taskId}`);
+}
+
+export function getContextAnalytics(context: string): Promise<ContextAnalytics> {
+  return request<ContextAnalytics>(`/analytics/context/${context}`);
 }
 
 export function completeTask(id: number, payload: { completed_on?: string | null; source_block_id?: number | null }): Promise<Task> {

@@ -8,8 +8,18 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
-from app.models import Milestone, Project, Tag, Task, TaskCompletion
-from app.schemas import HabitStatsRead, TaskCompleteRequest, TaskCompletionRead, TaskCreate, TaskRead, TaskUpdate
+from app.models import Milestone, Project, Tag, Task, TaskCompletion, TaskStep, WorkSession
+from app.schemas import (
+    HabitStatsRead,
+    TaskCompleteRequest,
+    TaskCompletionRead,
+    TaskCreate,
+    TaskRead,
+    TaskStepCreate,
+    TaskStepRead,
+    TaskUpdate,
+    WorkSessionRead,
+)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -42,6 +52,43 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(task)
     return task
+
+
+@router.get("/{task_id}/steps", response_model=list[TaskStepRead])
+def list_task_steps(task_id: int, db: Session = Depends(get_db)):
+    if db.get(Task, task_id) is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return db.scalars(
+        select(TaskStep)
+        .where(TaskStep.task_id == task_id)
+        .order_by(TaskStep.order_index, TaskStep.id)
+    ).all()
+
+
+@router.post("/{task_id}/steps", response_model=TaskStepRead, status_code=status.HTTP_201_CREATED)
+def create_task_step(task_id: int, payload: TaskStepCreate, db: Session = Depends(get_db)):
+    if db.get(Task, task_id) is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    data = payload.model_dump()
+    if data.get("order_index") is None:
+        current_max = db.scalar(select(func.max(TaskStep.order_index)).where(TaskStep.task_id == task_id))
+        data["order_index"] = 0 if current_max is None else current_max + 1
+    step = TaskStep(task_id=task_id, **data)
+    db.add(step)
+    db.commit()
+    db.refresh(step)
+    return step
+
+
+@router.get("/{task_id}/work-sessions", response_model=list[WorkSessionRead])
+def task_work_sessions(task_id: int, db: Session = Depends(get_db)):
+    if db.get(Task, task_id) is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return db.scalars(
+        select(WorkSession)
+        .where(WorkSession.task_id == task_id)
+        .order_by(WorkSession.started_at.desc())
+    ).all()
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
@@ -152,6 +199,14 @@ def habit_stats(days: int = 30, db: Session = Depends(get_db)):
             )
         )
     return results
+
+
+@router.get("/{task_id}", response_model=TaskRead)
+def get_task(task_id: int, db: Session = Depends(get_db)):
+    task = db.get(Task, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
